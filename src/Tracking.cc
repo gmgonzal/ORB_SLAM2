@@ -37,6 +37,7 @@
 
 #include<mutex>
 
+//#include <tf/transform_broadcaster.h>
 
 using namespace std;
 
@@ -266,6 +267,8 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
 
 void Tracking::Track()
 {
+    //static tf::TransformBroadcaster mTfBr; // broadcast all frames/cam poses
+
     if(mState==NO_IMAGES_YET)
     {
         mState = NOT_INITIALIZED;
@@ -488,15 +491,28 @@ void Tracking::Track()
     // Store frame pose information to retrieve the complete camera trajectory afterwards.
     if(!mCurrentFrame.mTcw.empty())
     {
+        //cout << "CURRENT FRAME NOT EMPTY!" << endl;
         cv::Mat Tcr = mCurrentFrame.mTcw*mCurrentFrame.mpReferenceKF->GetPoseInverse();
         mlRelativeFramePoses.push_back(Tcr);
         mlpReferences.push_back(mpReferenceKF);
         mlFrameTimes.push_back(mCurrentFrame.mTimeStamp);
         mlbLost.push_back(mState==LOST);
+        
+        /*cv::Mat Rwc = mCurrentFrame.mTcw.rowRange(0,3).colRange(0,3).t();
+        cv::Mat twc = -Rwc*mCurrentFrame.mTcw.rowRange(0,3).col(3);
+        tf::Matrix3x3 M(Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
+                        Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
+                        Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2));
+        tf::Vector3 V(twc.at<float>(0), twc.at<float>(1), twc.at<float>(2));
+
+        tf::Transform tfTcw(M,V);
+
+        mTfBr.sendTransform(tf::StampedTransform(tfTcw,ros::Time::now(), "ORB_SLAM/World", "ORB_SLAM/Camera"));*/
     }
     else
     {
         // This can happen if tracking is lost
+        //cout << "CURRENT FRAME EMPTY." << endl;
         mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
         mlpReferences.push_back(mlpReferences.back());
         mlFrameTimes.push_back(mlFrameTimes.back());

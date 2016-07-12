@@ -31,6 +31,8 @@
 
 #include"../../../include/System.h"
 
+#include <tf/transform_broadcaster.h>
+
 using namespace std;
 
 class ImageGrabber
@@ -41,6 +43,8 @@ public:
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
 
     ORB_SLAM2::System* mpSLAM;
+    
+    tf::TransformBroadcaster mTfBr;
 };
 
 int main(int argc, char **argv)
@@ -90,7 +94,21 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         return;
     }
 
-    mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
+    cv::Mat mTcw = mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
+
+    if(!mTcw.empty())
+    {
+        cv::Mat Rwc = mTcw.rowRange(0,3).colRange(0,3).t();
+        cv::Mat twc = -Rwc*mTcw.rowRange(0,3).col(3);
+        tf::Matrix3x3 M(Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
+                        Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
+                        Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2));
+        tf::Vector3 V(twc.at<float>(0), twc.at<float>(1), twc.at<float>(2));
+
+        tf::Transform tfTcw(M,V);
+
+        mTfBr.sendTransform(tf::StampedTransform(tfTcw,ros::Time::now(), "ORB_SLAM/World", "ORB_SLAM/Camera"));
+    }
 }
 
 
