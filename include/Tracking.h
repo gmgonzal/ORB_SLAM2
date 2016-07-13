@@ -39,7 +39,6 @@
 #include "System.h"
 
 #include <mutex>
-//#include <tf/transform_broadcaster.h>
 
 namespace ORB_SLAM2
 {
@@ -215,7 +214,6 @@ protected:
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
-    //tf::TransformBroadcaster mTfBr; // broadcast all frames/cam poses
 };
 
 } //namespace ORB_SLAM

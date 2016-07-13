@@ -94,12 +94,22 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
         return;
     }
 
+    // Retrieve camera pose for current frame
+    // From Raul Mur himself:
+    // The Frame class stores the pose in mTcw which is a cv::Mat 4x4 of type float (CV_32F)
+    // It transforms points in the world coordinate system into the camera.
+    // You could access this member at the end of GrabImage function in Tracking.
+    // However you should consider that frames are not optimized with bundle adjustment, 
+    // being potentially inconsistent with the keyframes. For example when the 
+    // map contains few keyframes, and all of them are included in the local 
+    // bundle adjustment, the global scale of the reconstruction might change 
+    // and frame poses will not notice.
     cv::Mat mTcw = mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
 
     if(!mTcw.empty())
     {
-        cv::Mat Rwc = mTcw.rowRange(0,3).colRange(0,3).t();
-        cv::Mat twc = -Rwc*mTcw.rowRange(0,3).col(3);
+        cv::Mat Rwc = mTcw.rowRange(0,3).colRange(0,3).t(); // Some kind of rotation info extraction
+        cv::Mat twc = -Rwc*mTcw.rowRange(0,3).col(3); // Some kind of translation info extraction
         tf::Matrix3x3 M(Rwc.at<float>(0,0),Rwc.at<float>(0,1),Rwc.at<float>(0,2),
                         Rwc.at<float>(1,0),Rwc.at<float>(1,1),Rwc.at<float>(1,2),
                         Rwc.at<float>(2,0),Rwc.at<float>(2,1),Rwc.at<float>(2,2));
